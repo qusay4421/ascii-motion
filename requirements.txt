@@ -1,0 +1,5 @@
+# Engine dependencies. opencv-python pulls a GUI build; if you are on a headless
+# server, swap it for opencv-python-headless.
+opencv-python>=4.8
+numpy>=1.24
+Pillow>=10.0

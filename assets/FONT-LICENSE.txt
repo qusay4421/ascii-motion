@@ -1,0 +1,8 @@
+DejaVuSansMono.ttf is part of the DejaVu Fonts project, distributed under a free,
+permissive license (based on the Bitstream Vera Fonts license). The fonts are free to
+use, redistribute, and modify. Full license:
+
+  https://dejavu-fonts.github.io/License.html
+
+The font is vendored here so the engine can both measure glyph ink coverage for the
+calibrated ramp and render PNG previews without depending on a system font.
