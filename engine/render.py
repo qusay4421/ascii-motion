@@ -54,4 +54,8 @@ def to_json(grid: Grid) -> str:
         "color": grid.color.reshape(-1, 3).astype(int).tolist(),
         "edges": grid.is_edge.astype(int).flatten().tolist(),
     }
+    # Only present when segmentation ran, so the animator can tell a frame with subject
+    # information from one without.
+    if grid.is_subject is not None:
+        model["subject"] = grid.is_subject.astype(int).flatten().tolist()
     return json.dumps(model, separators=(",", ":"))

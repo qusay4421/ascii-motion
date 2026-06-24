@@ -29,6 +29,7 @@ class Grid:
     chars: list[list[str]]   # rows of single-character strings
     color: np.ndarray        # (rows, cols, 3) uint8 average RGB per cell
     is_edge: np.ndarray      # (rows, cols) bool, True where an edge glyph was used
+    is_subject: np.ndarray | None = None  # (rows, cols) bool, set when segmentation runs
 
     @property
     def rows(self) -> int:
@@ -81,6 +82,7 @@ def to_grid(
     edge_strength: float = 0.18,
     auto_contrast: bool = True,
     ramp: Ramp | None = None,
+    subject: np.ndarray | None = None,
 ) -> Grid:
     bgr = cv2.imread(image_path, cv2.IMREAD_COLOR)
     if bgr is None:
@@ -117,4 +119,12 @@ def to_grid(
     color = cv2.cvtColor(
         cv2.resize(bgr, (cols, rows), interpolation=cv2.INTER_AREA), cv2.COLOR_BGR2RGB
     )
-    return Grid(chars=chars, color=color, is_edge=is_edge)
+
+    is_subject = None
+    if subject is not None:
+        # A precomputed full-res mask is reduced to the grid here so the heavy
+        # segmentation import stays out of the core converter.
+        from .segment import mask_to_cells
+        is_subject = mask_to_cells(subject, rows, cols)
+
+    return Grid(chars=chars, color=color, is_edge=is_edge, is_subject=is_subject)

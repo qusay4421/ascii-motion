@@ -7,9 +7,10 @@ smoothness, then the AI passes that make the motion meaningful.
 
 ## Status
 
-Day 3 of 7. Done: the accuracy engine (an image becomes a character grid with a
-coverage-calibrated ramp, area-average sampling, aspect correction, and an edge pass)
-and the web canvas animator that renders the frame model and assembles it on screen.
+Day 5 of 7. Done: the accuracy engine (image to a faithful character grid), the web
+canvas animator that assembles it on screen, and U2-Net segmentation so the subject
+animates independently of the background. Remaining: depth-based parallax, video, and
+accuracy polish.
 
 ## Accuracy: how the replication stays faithful (Day 1, done)
 
@@ -73,13 +74,24 @@ portfolio. Edge shimmer and a depth-aware parallax come once segmentation lands.
 Accept a video or image sequence, convert each frame, and play them back with the
 characters morphing between frames so motion stays smooth rather than flickering.
 
-## AI boundaries (Day 5, TODO)
+## AI boundaries: segmentation (Day 5, done)
 
-This is where "understand the boundaries" earns its place. A free, local segmentation
-model (rembg / U2-Net, or Segment Anything) gives a subject mask, and a depth model
-(Depth-Anything / MiDaS) gives a depth map. With those, the subject can move
-independently of the background and the scene can parallax, so the animation means
-something instead of being a uniform effect. All models are free and run offline.
+This is where "understand the boundaries" earns its place. A free, local U2-Net model
+(via rembg, no API) produces a foreground mask, which `engine/segment.py` reduces to a
+per-cell subject flag carried in the frame model. The animator then treats the subject
+and background differently: the background assembles first, the figure emerges on top,
+and once settled the subject drifts on its own with a tiny phase-shifted offset while
+the background stays put. That is the segmentation paying off, the figure moves
+independently instead of one uniform effect sweeping the whole frame.
+
+It is optional and lazily imported, so the core engine has no hard dependency on the
+heavy model. `cli.py --segment` runs it. Verified on a portrait: the mask is a clean
+silhouette, and a character-domain overlay confirms the subject cells trace the figure.
+The mask-to-grid reduction and the JSON round-trip are unit tested; the reveal phasing
+is tested in `web/anim.js`.
+
+Still ahead here: a depth model (Depth-Anything / MiDaS) for a parallax that uses real
+scene depth rather than a flat subject-vs-background split.
 
 ## Accuracy polish (Day 6, TODO)
 
@@ -103,6 +115,7 @@ the look to the rest of the portfolio.
 - [x] Day 1: accuracy engine (calibrated ramp, sampling, edges, PNG and JSON export)
 - [x] Day 2-3: web canvas animator (smoothness)
 - [ ] Day 4: video and frame morphing
-- [ ] Day 5: AI segmentation and depth for subject-aware motion
+- [x] Day 5a: AI segmentation for subject-aware motion (U2-Net)
+- [ ] Day 5b: depth model (Depth-Anything) for parallax
 - [ ] Day 6: accuracy polish (DoG edges, dithering, color, SSIM check)
 - [ ] Day 7: web app and gallery

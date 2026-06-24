@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { clamp01, easeOutCubic, hash01, revealDelay, cellProgress } from "./anim.js";
+import { clamp01, easeOutCubic, hash01, revealDelay, cellProgress, phasedDelay } from "./anim.js";
 
 test("clamp01 bounds to [0,1]", () => {
   assert.equal(clamp01(-2), 0);
@@ -50,6 +50,20 @@ test("scatter delays stay within range for every cell", () => {
       assert.ok(d >= 0 && d < 1);
     }
   }
+});
+
+test("phasedDelay reveals the background before the subject", () => {
+  // Background maps into [0, 0.55], subject into [0.5, 1], a small intentional overlap
+  // so the figure rises out of the scene rather than after a hard gap.
+  assert.equal(phasedDelay(0, false), 0);
+  assert.ok(phasedDelay(1, false) <= 0.55);
+  assert.ok(phasedDelay(0, true) >= 0.5);
+  assert.equal(phasedDelay(1, true), 1);
+  // The subject as a whole starts later than the background as a whole.
+  assert.ok(phasedDelay(0.5, true) > phasedDelay(0.5, false));
+  // Monotonic within each group.
+  assert.ok(phasedDelay(0.2, true) < phasedDelay(0.8, true));
+  assert.ok(phasedDelay(0.2, false) < phasedDelay(0.8, false));
 });
 
 test("cellProgress is 0 before its start and 1 well after", () => {

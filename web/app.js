@@ -5,7 +5,7 @@
 //   - drive everything off requestAnimationFrame with a real clock, so the easing is
 //     frame-rate independent and does not speed up on a faster display
 //   - scale the canvas by devicePixelRatio so text stays crisp
-import { revealDelay, cellProgress } from "./anim.js";
+import { revealDelay, cellProgress, phasedDelay } from "./anim.js";
 
 const PALETTE = { paper: "#f3efe6", ink: "#221f1c" }; // warm, ink-on-paper
 const FONT_PX = 16;
@@ -60,10 +60,14 @@ function layout() {
 
 function precomputeDelays() {
   const { model, mode } = state;
+  const subject = model.subject; // flat 0/1 array, present only when segmentation ran
   const d = new Float32Array(model.rows * model.cols);
   for (let r = 0; r < model.rows; r++) {
     for (let c = 0; c < model.cols; c++) {
-      d[r * model.cols + c] = revealDelay(mode, r, c, model.rows, model.cols);
+      const i = r * model.cols + c;
+      const base = revealDelay(mode, r, c, model.rows, model.cols);
+      // With a subject mask, the background reveals first and the figure emerges after.
+      d[i] = subject ? phasedDelay(base, subject[i] === 1) : base;
     }
   }
   state.delays = d;
@@ -71,6 +75,7 @@ function precomputeDelays() {
 
 function frame(nowMs) {
   const { model, atlas, delays } = state;
+  const subject = model.subject;
   if (!state.start) state.start = nowMs;
   const t = (nowMs - state.start) / 1000;
 
@@ -86,7 +91,8 @@ function frame(nowMs) {
       const x0 = atlas.index.get(ch);
       if (x0 === undefined) continue;
 
-      const p = cellProgress(t, delays[r * model.cols + c], REVEAL.stagger, REVEAL.duration);
+      const i = r * model.cols + c;
+      const p = cellProgress(t, delays[i], REVEAL.stagger, REVEAL.duration);
       if (p <= 0) {
         settled = false;
         continue;
@@ -96,15 +102,26 @@ function frame(nowMs) {
       // Reveal: fade in while sliding up the last few pixels. Cheap per-cell transform
       // that still reads as the grid assembling itself.
       ctx.globalAlpha = p;
-      const dy = (1 - p) * atlas.h * 0.4;
-      ctx.drawImage(atlas.canvas, x0, 0, atlas.w, atlas.h, c * atlas.w, r * atlas.h + dy, atlas.w, atlas.h);
+      let dx = 0;
+      let dy = (1 - p) * atlas.h * 0.4;
+
+      // Once settled, the subject drifts on its own while the background stays put.
+      // This is the segmentation paying off: the figure moves independently, not the
+      // whole frame. The offset is tiny and phase-shifted by position so it reads as a
+      // gentle breath rather than a slide.
+      if (subject && subject[i] === 1 && p >= 1) {
+        dx += Math.sin(t * 1.1 + r * 0.22) * 1.6 * dpr;
+        dy += Math.cos(t * 0.85 + c * 0.18) * 1.3 * dpr;
+      }
+
+      ctx.drawImage(atlas.canvas, x0, 0, atlas.w, atlas.h, c * atlas.w + dx, r * atlas.h + dy, atlas.w, atlas.h);
     }
   }
   ctx.globalAlpha = 1;
 
-  // Keep animating until every cell has arrived, then idle (one more cheap repaint
-  // would just redraw the same thing, so stop scheduling).
-  if (!settled) requestAnimationFrame(frame);
+  // Keep animating until every cell has arrived. If there is a subject it drifts
+  // forever, so keep the loop alive; otherwise stop once the grid has settled.
+  if (!settled || subject) requestAnimationFrame(frame);
 }
 
 function play() {

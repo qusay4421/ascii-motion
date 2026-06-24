@@ -3,3 +3,8 @@
 opencv-python>=4.8
 numpy>=1.24
 Pillow>=10.0
+
+# Optional: only needed for --segment (subject-aware animation). Heavy, downloads a
+# ~176MB U2-Net model on first use, runs offline after that. Install with:
+#   pip install "rembg[cpu]"
+# rembg

@@ -46,6 +46,19 @@ drawImage instead of thousands of fillText calls), a real-clock requestAnimation
 loop so the easing is the same on any refresh rate, and devicePixelRatio scaling for
 crisp text. The animation math is unit tested with `node --test web/anim.test.mjs`.
 
+## Subject-aware animation (optional)
+
+With `--segment`, a free local U2-Net model (via rembg) separates the subject from the
+background. The animator then assembles the background first, lets the figure emerge on
+top, and drifts the subject on its own afterward while the background stays still.
+
+```sh
+pip install "rembg[cpu]"          # heavy, downloads a ~176MB model once, then offline
+python cli.py portrait.jpg --segment --out web/sample
+```
+
+The frame model gains a per-cell `subject` flag the page reads automatically.
+
 ## Test
 
 ```sh

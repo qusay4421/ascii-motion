@@ -89,6 +89,30 @@ def test_aspect_correction_keeps_proportions():
     assert abs(grid.rows - expected) <= 2, f"rows {grid.rows} should be near {expected:.1f}"
 
 
+def test_mask_to_cells_downsamples_to_subject_grid():
+    from engine import mask_to_cells
+
+    # Left half subject, right half background; must survive the reduction to the grid.
+    mask = np.zeros((100, 100), np.float32)
+    mask[:, :50] = 1.0
+    cells = mask_to_cells(mask, rows=10, cols=10)
+    assert cells.shape == (10, 10)
+    assert cells[:, :5].all() and not cells[:, 5:].any()
+
+
+def test_subject_flows_into_grid_and_json():
+    from engine import to_grid, to_json
+    import json
+
+    mask = np.zeros((120, 120), np.float32)
+    mask[:, :60] = 1.0
+    grid = to_grid(_write(np.full((120, 120, 3), 128, np.uint8)), cols=40, font_path=FONT,
+                   edges=False, subject=mask)
+    assert grid.is_subject is not None and grid.is_subject.shape == (grid.rows, grid.cols)
+    model = json.loads(to_json(grid))
+    assert "subject" in model and len(model["subject"]) == grid.rows * grid.cols
+
+
 def _run():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     failures = 0

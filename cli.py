@@ -22,10 +22,17 @@ def main() -> None:
     p.add_argument("--no-edges", action="store_true", help="disable directional edge glyphs")
     p.add_argument("--color", action="store_true", help="color the PNG preview per cell")
     p.add_argument("--font-size", type=int, default=24)
+    p.add_argument("--segment", action="store_true",
+                   help="run U2-Net to tag subject vs background (needs rembg)")
     args = p.parse_args()
 
+    subject = None
+    if args.segment:
+        from engine.segment import subject_mask
+        subject = subject_mask(args.image)
+
     grid = to_grid(args.image, cols=args.width, font_path=FONT,
-                   font_size=args.font_size, edges=not args.no_edges)
+                   font_size=args.font_size, edges=not args.no_edges, subject=subject)
 
     out_dir = os.path.dirname(args.out)
     if out_dir:

@@ -42,6 +42,16 @@ export function revealDelay(mode, r, c, rows, cols) {
   }
 }
 
+// phasedDelay splits the reveal when a subject mask is present: the background fills
+// first, then the subject emerges on top. Background maps into [0, 0.55), the subject
+// into [0.5, 1], so they overlap slightly and the figure appears to rise out of the
+// scene rather than arriving at the same time.
+export function phasedDelay(baseDelay, isSubject) {
+  const BG_END = 0.55;
+  const SUBJECT_START = 0.5;
+  return isSubject ? SUBJECT_START + baseDelay * (1 - SUBJECT_START) : baseDelay * BG_END;
+}
+
 // cellProgress maps wall-clock time to a cell's 0..1 reveal progress, eased. now and
 // the windows are in seconds. stagger is how long the start times are spread over;
 // duration is how long one cell takes to arrive.
