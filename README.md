@@ -30,6 +30,22 @@ python cli.py path/to/image.jpg --width 140 --out out/image
 Flags: `--width` columns, `--color` to color the PNG per cell, `--no-edges` to drop the
 directional glyphs, `--font-size` for the preview scale.
 
+## Animate it
+
+The `web/` folder is a static page that renders a frame model on a canvas and assembles
+it on screen (wipe, radial, scatter, or rows reveal). It ships with a sample, and you
+can load any `.json` the CLI writes.
+
+```sh
+cd web
+python3 -m http.server 8000   # then open http://localhost:8000
+```
+
+Smoothness comes from a glyph atlas (each character is drawn once, then blitted with
+drawImage instead of thousands of fillText calls), a real-clock requestAnimationFrame
+loop so the easing is the same on any refresh rate, and devicePixelRatio scaling for
+crisp text. The animation math is unit tested with `node --test web/anim.test.mjs`.
+
 ## Test
 
 ```sh
@@ -48,6 +64,7 @@ engine/ramp.py      glyph-coverage-calibrated brightness ramp
 engine/convert.py   image -> character grid (luminance, sampling, aspect, edges)
 engine/render.py    grid -> text, PNG preview, JSON frame model
 cli.py              command-line entry point
+web/                static canvas animator (anim.js math is unit tested)
 assets/             vendored DejaVu Sans Mono (see assets/FONT-LICENSE.txt)
 tests/              objective correctness tests
 DESIGN.md           design, accuracy notes, and the roadmap

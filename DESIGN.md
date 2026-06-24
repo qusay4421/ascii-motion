@@ -7,9 +7,9 @@ smoothness, then the AI passes that make the motion meaningful.
 
 ## Status
 
-Day 1 of 7. Done: the accuracy engine. An image becomes a character grid with a
-coverage-calibrated brightness ramp, area-average sampling, aspect correction, and an
-edge pass, exported to text, a PNG preview, and a JSON frame model.
+Day 3 of 7. Done: the accuracy engine (an image becomes a character grid with a
+coverage-calibrated ramp, area-average sampling, aspect correction, and an edge pass)
+and the web canvas animator that renders the frame model and assembles it on screen.
 
 ## Accuracy: how the replication stays faithful (Day 1, done)
 
@@ -41,14 +41,32 @@ an image (the honest fidelity check: if the PNG still reads as the photo, replic
 is good), and a compact JSON frame model (rows of character strings plus per-cell color
 and an edge mask) for the animator.
 
-## Smoothness: the web animator (Day 2-3, TODO)
+## Smoothness: the web animator (Day 2-3, done)
 
-Render the frame model on a canvas, not the DOM. A grid of thousands of characters as
-DOM nodes cannot animate at 60fps; drawing glyphs to a 2D canvas (or WebGL later) can.
-The animator interpolates with requestAnimationFrame and an easing curve. First
-animations: assemble-in (characters fade and settle into place), edge shimmer along the
-contour glyphs, and a cursor reveal. Smoothness is the priority, so this stage is about
-frame budget and easing, not feature count.
+`web/` renders the frame model on a canvas and assembles it on screen. Three decisions
+carry the smoothness:
+
+- Glyph atlas, not fillText: every distinct glyph is drawn once into an offscreen
+  canvas, and each frame blits sprites with drawImage. A 120x70 grid is 8400 cells, and
+  calling fillText that many times per frame stutters; drawImage from an atlas does not.
+  Spaces are skipped, which is most of a light image.
+- Real clock, not frame counting: the reveal is driven by requestAnimationFrame with
+  the actual elapsed time, so the easing is identical on a 60Hz and a 144Hz display
+  rather than running faster on the quicker screen. The loop stops scheduling once every
+  cell has settled, so an idle page costs nothing.
+- devicePixelRatio scaling so the text stays crisp on retina screens, capped at 2x to
+  bound the fill cost.
+
+The reveal itself: each cell gets a normalized start offset by mode (wipe, radial,
+scatter, rows), eased with easeOutCubic, fading in while sliding up a few pixels so the
+grid reads as assembling itself. The pure math (easing, the per-mode delay, time to
+progress) lives in `web/anim.js` and is unit tested in Node, separate from the DOM glue
+in `web/app.js`. The page loads a bundled sample and accepts any frame .json the CLI
+produces.
+
+Default look is ink-on-paper in the warm palette, which matches the engine's
+darkness-to-density calibration (a dark image area is dense ink) and the rest of the
+portfolio. Edge shimmer and a depth-aware parallax come once segmentation lands.
 
 ## Video and morphing (Day 4, TODO)
 
@@ -83,7 +101,7 @@ the look to the rest of the portfolio.
 ## Roadmap
 
 - [x] Day 1: accuracy engine (calibrated ramp, sampling, edges, PNG and JSON export)
-- [ ] Day 2-3: web canvas animator (smoothness)
+- [x] Day 2-3: web canvas animator (smoothness)
 - [ ] Day 4: video and frame morphing
 - [ ] Day 5: AI segmentation and depth for subject-aware motion
 - [ ] Day 6: accuracy polish (DoG edges, dithering, color, SSIM check)
