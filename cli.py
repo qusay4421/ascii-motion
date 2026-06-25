@@ -24,6 +24,8 @@ def main() -> None:
     p.add_argument("--font-size", type=int, default=24)
     p.add_argument("--segment", action="store_true",
                    help="run U2-Net to tag subject vs background (needs rembg)")
+    p.add_argument("--depth", action="store_true",
+                   help="run MiDaS depth for parallax (needs onnxruntime + the model)")
     p.add_argument("--edge-method", choices=("sobel", "dog"), default="sobel",
                    help="edge detector: sobel, or dog for cleaner thin contours")
     p.add_argument("--measure", action="store_true",
@@ -35,10 +37,15 @@ def main() -> None:
         from engine.segment import subject_mask
         subject = subject_mask(args.image)
 
+    depth = None
+    if args.depth:
+        from engine.depth import depth_map
+        depth = depth_map(args.image)
+
     ramp = build_ramp(FONT, args.font_size)
     grid = to_grid(args.image, cols=args.width, font_path=FONT,
                    font_size=args.font_size, edges=not args.no_edges,
-                   edge_method=args.edge_method, subject=subject, ramp=ramp)
+                   edge_method=args.edge_method, subject=subject, depth=depth, ramp=ramp)
 
     out_dir = os.path.dirname(args.out)
     if out_dir:

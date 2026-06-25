@@ -147,6 +147,24 @@ def test_calibrated_ramp_beats_a_naive_uniform_ramp():
     assert cal > nai, f"calibrated ({cal:.3f}) should beat naive ({nai:.3f})"
 
 
+def test_depth_to_cells_and_json():
+    from engine import depth_to_cells, to_grid, to_json
+    import json
+
+    # Near on the left, far on the right; the cell grid must keep that ordering.
+    depth = np.tile(np.linspace(1, 0, 100, dtype=np.float32), (100, 1))
+    cells = depth_to_cells(depth, rows=10, cols=10)
+    assert cells.shape == (10, 10)
+    assert cells[:, 0].mean() > cells[:, -1].mean()
+
+    grid = to_grid(_write(np.full((100, 100, 3), 128, np.uint8)), cols=30, font_path=FONT,
+                   edges=False, depth=depth)
+    assert grid.depth is not None and grid.depth.shape == (grid.rows, grid.cols)
+    model = json.loads(to_json(grid))
+    assert "depth" in model and len(model["depth"]) == grid.rows * grid.cols
+    assert all(0 <= d <= 255 for d in model["depth"])
+
+
 def test_dog_edges_detect_a_line():
     img = np.zeros((200, 200, 3), np.uint8)
     img[:, 95:105] = 255

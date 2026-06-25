@@ -8,3 +8,8 @@ Pillow>=10.0
 # ~176MB U2-Net model on first use, runs offline after that. Install with:
 #   pip install "rembg[cpu]"
 # rembg
+
+# Optional: only needed for --depth (parallax). Runs the MiDaS depth model offline.
+# Fetch the model with scripts/get-depth-model.sh. Install with:
+#   pip install onnxruntime
+# onnxruntime

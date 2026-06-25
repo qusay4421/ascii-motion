@@ -5,7 +5,7 @@
 //   - drive everything off requestAnimationFrame with a real clock, so the easing is
 //     frame-rate independent and does not speed up on a faster display
 //   - scale the canvas by devicePixelRatio so text stays crisp
-import { revealDelay, cellProgress, phasedDelay } from "./anim.js";
+import { revealDelay, cellProgress, phasedDelay, parallaxOffset } from "./anim.js";
 
 const PALETTE = { paper: "#f3efe6", ink: "#221f1c" }; // warm, ink-on-paper
 const FONT_PX = 16;
@@ -15,13 +15,20 @@ const state = {
   model: null,
   atlas: null, // { canvas, w, h, index: Map<char, x> }
   delays: null, // Float32Array of normalized per-cell start offsets
+  depth: null, // Float32Array of per-cell depth in [0,1], when present
   mode: "wipe",
   start: 0,
+  mouse: { x: 0, y: 0 }, // normalized -0.5..0.5, nudges the parallax camera
 };
 
 const canvas = document.getElementById("stage");
 const ctx = canvas.getContext("2d");
 const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+window.addEventListener("pointermove", (e) => {
+  state.mouse.x = e.clientX / window.innerWidth - 0.5;
+  state.mouse.y = e.clientY / window.innerHeight - 0.5;
+});
 
 // Build an atlas of every distinct non-space glyph, drawn once in the ink color.
 function buildAtlas(model) {
@@ -74,13 +81,18 @@ function precomputeDelays() {
 }
 
 function frame(nowMs) {
-  const { model, atlas, delays } = state;
+  const { model, atlas, delays, depth } = state;
   const subject = model.subject;
   if (!state.start) state.start = nowMs;
   const t = (nowMs - state.start) / 1000;
 
   ctx.fillStyle = PALETTE.paper;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Virtual camera for depth parallax: a slow auto orbit nudged by the pointer.
+  const amp = 7 * dpr;
+  const camX = (Math.sin(t * 0.5) * 0.6 + state.mouse.x) * amp;
+  const camY = (Math.cos(t * 0.4) * 0.4 + state.mouse.y) * amp * 0.7;
 
   let settled = true;
   for (let r = 0; r < model.rows; r++) {
@@ -105,13 +117,19 @@ function frame(nowMs) {
       let dx = 0;
       let dy = (1 - p) * atlas.h * 0.4;
 
-      // Once settled, the subject drifts on its own while the background stays put.
-      // This is the segmentation paying off: the figure moves independently, not the
-      // whole frame. The offset is tiny and phase-shifted by position so it reads as a
-      // gentle breath rather than a slide.
-      if (subject && subject[i] === 1 && p >= 1) {
-        dx += Math.sin(t * 1.1 + r * 0.22) * 1.6 * dpr;
-        dy += Math.cos(t * 0.85 + c * 0.18) * 1.3 * dpr;
+      // Once settled, add continuous motion. Depth parallax takes precedence: each cell
+      // shifts by the camera offset scaled by its depth, so the scene gains real space.
+      // Without depth, fall back to the segmentation drift (subject floats, background
+      // holds). Either way the frame stops being a static block.
+      if (p >= 1) {
+        if (depth) {
+          const [px, py] = parallaxOffset(depth[i], camX, camY);
+          dx += px;
+          dy += py;
+        } else if (subject && subject[i] === 1) {
+          dx += Math.sin(t * 1.1 + r * 0.22) * 1.6 * dpr;
+          dy += Math.cos(t * 0.85 + c * 0.18) * 1.3 * dpr;
+        }
       }
 
       ctx.drawImage(atlas.canvas, x0, 0, atlas.w, atlas.h, c * atlas.w + dx, r * atlas.h + dy, atlas.w, atlas.h);
@@ -119,9 +137,9 @@ function frame(nowMs) {
   }
   ctx.globalAlpha = 1;
 
-  // Keep animating until every cell has arrived. If there is a subject it drifts
+  // Keep animating until every cell has arrived. Depth or subject motion continues
   // forever, so keep the loop alive; otherwise stop once the grid has settled.
-  if (!settled || subject) requestAnimationFrame(frame);
+  if (!settled || subject || depth) requestAnimationFrame(frame);
 }
 
 function play() {
@@ -132,6 +150,8 @@ function play() {
 function loadModel(model) {
   state.model = model;
   state.atlas = buildAtlas(model);
+  // Depth arrives as a byte per cell; back to [0,1] for parallax.
+  state.depth = model.depth ? Float32Array.from(model.depth, (d) => d / 255) : null;
   layout();
   precomputeDelays();
   play();

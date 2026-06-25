@@ -58,4 +58,8 @@ def to_json(grid: Grid) -> str:
     # information from one without.
     if grid.is_subject is not None:
         model["subject"] = grid.is_subject.astype(int).flatten().tolist()
+    # Depth is quantized to a byte per cell to keep the payload small; the animator
+    # reads it back to [0,1] for parallax.
+    if grid.depth is not None:
+        model["depth"] = np.clip(grid.depth * 255, 0, 255).astype(int).flatten().tolist()
     return json.dumps(model, separators=(",", ":"))

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { clamp01, easeOutCubic, hash01, revealDelay, cellProgress, phasedDelay } from "./anim.js";
+import { clamp01, easeOutCubic, hash01, revealDelay, cellProgress, phasedDelay, parallaxOffset } from "./anim.js";
 
 test("clamp01 bounds to [0,1]", () => {
   assert.equal(clamp01(-2), 0);
@@ -64,6 +64,12 @@ test("phasedDelay reveals the background before the subject", () => {
   // Monotonic within each group.
   assert.ok(phasedDelay(0.2, true) < phasedDelay(0.8, true));
   assert.ok(phasedDelay(0.2, false) < phasedDelay(0.8, false));
+});
+
+test("parallaxOffset scales the camera shift by depth", () => {
+  assert.deepEqual(parallaxOffset(1, 5, 3), [5, 3]); // nearest moves the full amount
+  assert.deepEqual(parallaxOffset(0, 5, 3), [0, 0]); // farthest does not move
+  assert.deepEqual(parallaxOffset(0.5, 4, 2), [2, 1]);
 });
 
 test("cellProgress is 0 before its start and 1 well after", () => {

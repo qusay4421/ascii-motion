@@ -6,3 +6,7 @@ out/
 venv/
 # generated outputs
 /out
+
+# Depth model (download via scripts/get-depth-model.sh)
+*.onnx
+assets/midas_small.onnx

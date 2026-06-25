@@ -31,6 +31,7 @@ class Grid:
     is_edge: np.ndarray      # (rows, cols) bool, True where an edge glyph was used
     is_subject: np.ndarray | None = None  # (rows, cols) bool, set when segmentation runs
     darkness: np.ndarray | None = None    # (rows, cols) target darkness, for the fidelity score
+    depth: np.ndarray | None = None       # (rows, cols) float [0,1], near=1, set when depth runs
 
     @property
     def rows(self) -> int:
@@ -94,6 +95,7 @@ def to_grid(
     auto_contrast: bool = True,
     ramp: Ramp | None = None,
     subject: np.ndarray | None = None,
+    depth: np.ndarray | None = None,
 ) -> Grid:
     bgr = cv2.imread(image_path, cv2.IMREAD_COLOR)
     if bgr is None:
@@ -138,4 +140,10 @@ def to_grid(
         from .segment import mask_to_cells
         is_subject = mask_to_cells(subject, rows, cols)
 
-    return Grid(chars=chars, color=color, is_edge=is_edge, is_subject=is_subject, darkness=darkness)
+    depth_cells = None
+    if depth is not None:
+        from .depth import depth_to_cells
+        depth_cells = depth_to_cells(depth, rows, cols)
+
+    return Grid(chars=chars, color=color, is_edge=is_edge, is_subject=is_subject,
+                darkness=darkness, depth=depth_cells)

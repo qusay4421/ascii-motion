@@ -52,6 +52,13 @@ export function phasedDelay(baseDelay, isSubject) {
   return isSubject ? SUBJECT_START + baseDelay * (1 - SUBJECT_START) : baseDelay * BG_END;
 }
 
+// parallaxOffset shifts a cell by the camera offset scaled by its depth (1 = nearest),
+// so near characters move more than far ones as the camera pans and a flat image gains
+// a sense of space.
+export function parallaxOffset(depth, camX, camY) {
+  return [camX * depth, camY * depth];
+}
+
 // cellProgress maps wall-clock time to a cell's 0..1 reveal progress, eased. now and
 // the windows are in seconds. stagger is how long the start times are spread over;
 // duration is how long one cell takes to arrive.

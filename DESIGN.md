@@ -7,10 +7,11 @@ smoothness, then the AI passes that make the motion meaningful.
 
 ## Status
 
-Day 6 of 7. Done: the accuracy engine (image to a faithful character grid), a measurable SSIM fidelity score, the web
-canvas animator that assembles it on screen, and U2-Net segmentation so the subject
-animates independently of the background, a measurable SSIM fidelity score, and DoG
-edges. Remaining: depth-based parallax, video morphing, and the upload web app.
+Most of 7 done. Built: the accuracy engine (image to a faithful character grid) with a
+measurable SSIM fidelity score and DoG edges, the web canvas animator that assembles it
+on screen, and two AI boundary passes, U2-Net segmentation and MiDaS depth parallax, so
+the subject and scene move with a sense of space rather than as a flat block. Remaining:
+video morphing and the upload web app.
 
 ## Accuracy: how the replication stays faithful (Day 1, done)
 
@@ -90,8 +91,21 @@ silhouette, and a character-domain overlay confirms the subject cells trace the 
 The mask-to-grid reduction and the JSON round-trip are unit tested; the reveal phasing
 is tested in `web/anim.js`.
 
-Still ahead here: a depth model (Depth-Anything / MiDaS) for a parallax that uses real
-scene depth rather than a flat subject-vs-background split.
+## AI boundaries: depth parallax (Day 5b, done)
+
+Where segmentation gives a flat subject-vs-background split, depth gives a continuous
+near-to-far value per cell. `engine/depth.py` runs MiDaS small as an ONNX model on
+onnxruntime (free, offline, ~64MB, not vendored, fetched by scripts/get-depth-model.sh)
+and reduces the depth map to a per-cell depth carried in the frame model. The animator
+adds a slow virtual camera (auto orbit, nudged by the pointer) and shifts each cell by
+the camera offset scaled by its depth, so near characters move more than far ones and
+the still image gains real space, not a flat subject bob. Depth takes precedence over
+the subject drift when present.
+
+Verified on a portrait: the depth map is sensible (subject near at ~0.93, corners far
+at ~0.35) and reads correctly as an image. The depth-to-grid reduction and the JSON
+round-trip are unit tested; the parallax math (`parallaxOffset`) is tested in anim.js.
+`cli.py --depth` runs it.
 
 ## Accuracy polish and a fidelity score (Day 6, done)
 
@@ -132,6 +146,6 @@ the look to the rest of the portfolio.
 - [x] Day 2-3: web canvas animator (smoothness)
 - [ ] Day 4: video and frame morphing
 - [x] Day 5a: AI segmentation for subject-aware motion (U2-Net)
-- [ ] Day 5b: depth model (Depth-Anything) for parallax
+- [x] Day 5b: depth parallax (MiDaS ONNX)
 - [x] Day 6: accuracy polish (DoG edges + SSIM fidelity score)
 - [ ] Day 7: web app and gallery

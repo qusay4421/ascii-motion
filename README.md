@@ -67,6 +67,21 @@ python cli.py portrait.jpg --segment --out web/sample
 
 The frame model gains a per-cell `subject` flag the page reads automatically.
 
+## Depth parallax (optional)
+
+With `--depth`, a free local MiDaS model (ONNX, via onnxruntime) estimates a depth map.
+The animator then runs a slow virtual camera and shifts each cell by its depth, so near
+characters move more than far ones and the still image gains a sense of space. A pointer
+move nudges the camera.
+
+```sh
+pip install onnxruntime
+sh scripts/get-depth-model.sh        # ~64MB model, downloaded once, then offline
+python cli.py portrait.jpg --depth --out web/sample
+```
+
+The frame model gains a per-cell `depth` value the page reads automatically.
+
 ## Test
 
 ```sh
