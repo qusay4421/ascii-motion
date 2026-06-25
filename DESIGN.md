@@ -7,10 +7,10 @@ smoothness, then the AI passes that make the motion meaningful.
 
 ## Status
 
-Day 5 of 7. Done: the accuracy engine (image to a faithful character grid), the web
+Day 6 of 7. Done: the accuracy engine (image to a faithful character grid), a measurable SSIM fidelity score, the web
 canvas animator that assembles it on screen, and U2-Net segmentation so the subject
-animates independently of the background. Remaining: depth-based parallax, video, and
-accuracy polish.
+animates independently of the background, a measurable SSIM fidelity score, and DoG
+edges. Remaining: depth-based parallax, video morphing, and the upload web app.
 
 ## Accuracy: how the replication stays faithful (Day 1, done)
 
@@ -93,11 +93,27 @@ is tested in `web/anim.js`.
 Still ahead here: a depth model (Depth-Anything / MiDaS) for a parallax that uses real
 scene depth rather than a flat subject-vs-background split.
 
-## Accuracy polish (Day 6, TODO)
+## Accuracy polish and a fidelity score (Day 6, done)
 
-Difference-of-Gaussians edges for cleaner lines, optional ordered dithering, color and
-gamma controls, and ramp tuning per font. Measured against the source with a structural
-similarity check.
+Accuracy now has a number. `engine/measure.py` scores how closely the chosen glyphs
+reproduce the source tones using SSIM (the standard perceptual image metric), comparing
+the target darkness the converter computed against the true ink density of the glyph it
+picked, cell for cell. Edge cells are neutralized so the score reflects the tone layer,
+not the deliberately tone-deviating edge glyphs. `cli.py --measure` prints it.
+
+The score makes the central accuracy claim measurable: the coverage-calibrated ramp
+reproduces a portrait at SSIM 0.986, against 0.925 for a naive ramp that assumes evenly
+spaced glyph densities. That 0.06 gap is the payoff of measuring real glyph coverage
+instead of guessing the order, and it is now a regression-testable number rather than a
+claim.
+
+`--edge-method dog` adds difference-of-Gaussians edges as an alternative to Sobel. DoG
+responds to thin lines and suppresses smooth shading, so contours come out cleaner;
+direction still comes from the Sobel gradient. Tests cover SSIM identity and its drop
+under noise, the gradient fidelity, that the calibrated ramp beats the naive one, and
+DoG line detection.
+
+Still ahead: optional ordered dithering and gamma controls.
 
 ## Web app and gallery (Day 7, TODO)
 
@@ -117,5 +133,5 @@ the look to the rest of the portfolio.
 - [ ] Day 4: video and frame morphing
 - [x] Day 5a: AI segmentation for subject-aware motion (U2-Net)
 - [ ] Day 5b: depth model (Depth-Anything) for parallax
-- [ ] Day 6: accuracy polish (DoG edges, dithering, color, SSIM check)
+- [x] Day 6: accuracy polish (DoG edges + SSIM fidelity score)
 - [ ] Day 7: web app and gallery

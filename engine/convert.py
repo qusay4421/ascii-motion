@@ -30,6 +30,7 @@ class Grid:
     color: np.ndarray        # (rows, cols, 3) uint8 average RGB per cell
     is_edge: np.ndarray      # (rows, cols) bool, True where an edge glyph was used
     is_subject: np.ndarray | None = None  # (rows, cols) bool, set when segmentation runs
+    darkness: np.ndarray | None = None    # (rows, cols) target darkness, for the fidelity score
 
     @property
     def rows(self) -> int:
@@ -53,11 +54,20 @@ def _grid_shape(img_h: int, img_w: int, cols: int, aspect: float) -> tuple[int, 
     return rows, cols
 
 
-def _edge_directions(gray: np.ndarray, rows: int, cols: int) -> tuple[np.ndarray, np.ndarray]:
-    """Per-cell edge strength and a 4-way glyph index from the Sobel gradient."""
+def _edge_directions(gray: np.ndarray, rows: int, cols: int, method: str = "sobel") -> tuple[np.ndarray, np.ndarray]:
+    """Per-cell edge strength and a 4-way glyph index.
+
+    Direction always comes from the Sobel gradient. Strength comes from either the
+    Sobel magnitude or, with method="dog", a difference-of-Gaussians, which responds to
+    thin lines and suppresses smooth shading, so contours come out cleaner.
+    """
     gx = cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=3)
     gy = cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=3)
-    mag = cv2.magnitude(gx, gy)
+
+    if method == "dog":
+        mag = np.abs(cv2.GaussianBlur(gray, (0, 0), 1.0) - cv2.GaussianBlur(gray, (0, 0), 2.0))
+    else:
+        mag = cv2.magnitude(gx, gy)
 
     # Average gradients down to the grid before taking the angle, so each cell gets the
     # dominant local edge direction instead of one noisy pixel's.
@@ -80,6 +90,7 @@ def to_grid(
     font_size: int = 24,
     edges: bool = True,
     edge_strength: float = 0.18,
+    edge_method: str = "sobel",
     auto_contrast: bool = True,
     ramp: Ramp | None = None,
     subject: np.ndarray | None = None,
@@ -108,7 +119,7 @@ def to_grid(
 
     is_edge = np.zeros((rows, cols), dtype=bool)
     if edges:
-        magc, bin_idx = _edge_directions(gray, rows, cols)
+        magc, bin_idx = _edge_directions(gray, rows, cols, edge_method)
         thresh = magc.max() * edge_strength
         for r in range(rows):
             for c in range(cols):
@@ -127,4 +138,4 @@ def to_grid(
         from .segment import mask_to_cells
         is_subject = mask_to_cells(subject, rows, cols)
 
-    return Grid(chars=chars, color=color, is_edge=is_edge, is_subject=is_subject)
+    return Grid(chars=chars, color=color, is_edge=is_edge, is_subject=is_subject, darkness=darkness)

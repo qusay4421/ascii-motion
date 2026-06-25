@@ -113,6 +113,49 @@ def test_subject_flows_into_grid_and_json():
     assert "subject" in model and len(model["subject"]) == grid.rows * grid.cols
 
 
+def test_ssim_identity_and_noise():
+    from engine import ssim
+
+    x = (np.random.default_rng(0).random((80, 80)) * 255).astype(np.float64)
+    assert abs(ssim(x, x) - 1.0) < 1e-6, "ssim of an image with itself is 1"
+    noisy = x + np.random.default_rng(1).normal(0, 40, x.shape)
+    assert ssim(x, noisy) < 0.9, "noise must lower ssim"
+
+
+def test_fidelity_is_high_on_a_smooth_gradient():
+    from engine import build_ramp, fidelity
+
+    ramp = build_ramp(FONT)
+    grad = np.tile(np.linspace(0, 255, 200, dtype=np.uint8), (120, 1))
+    grid = to_grid(_write(cv2.cvtColor(grad, cv2.COLOR_GRAY2BGR)), cols=80, font_path=FONT,
+                   edges=False, ramp=ramp)
+    score = fidelity(grid, ramp)
+    assert score > 0.9, f"calibrated ramp should track a gradient closely, got {score:.3f}"
+
+
+def test_calibrated_ramp_beats_a_naive_uniform_ramp():
+    # The accuracy payoff of measuring glyph coverage: a calibrated ramp reproduces
+    # tone better than one that assumes evenly spaced densities.
+    from engine import build_ramp, fidelity
+    from engine.ramp import Ramp
+
+    ramp = build_ramp(FONT)
+    naive = Ramp(chars=ramp.chars, coverage=np.linspace(0, 1, len(ramp.chars)))
+    img = _write(cv2.cvtColor(np.tile(np.linspace(0, 255, 200, dtype=np.uint8), (120, 1)), cv2.COLOR_GRAY2BGR))
+    cal = fidelity(to_grid(img, cols=80, font_path=FONT, edges=False, ramp=ramp), ramp)
+    nai = fidelity(to_grid(img, cols=80, font_path=FONT, edges=False, ramp=naive), ramp)
+    assert cal > nai, f"calibrated ({cal:.3f}) should beat naive ({nai:.3f})"
+
+
+def test_dog_edges_detect_a_line():
+    img = np.zeros((200, 200, 3), np.uint8)
+    img[:, 95:105] = 255
+    grid = to_grid(_write(img), cols=60, font_path=FONT, edges=True, edge_method="dog")
+    edge_chars = [grid.chars[r][c] for r in range(grid.rows) for c in range(grid.cols) if grid.is_edge[r, c]]
+    assert edge_chars, "dog should find the line"
+    assert edge_chars.count("|") >= len(edge_chars) * 0.6, f"vertical line should be mostly '|': {set(edge_chars)}"
+
+
 def _run():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     failures = 0
